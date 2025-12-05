@@ -127,86 +127,82 @@ function executeFallbackList (listTypes) {
                     }
                   } else {
                     const parts = url.split(' ')
-                    if (parts.includes('-b')) {
-                      if (!parts.some(url => fs.readFileSync(fallbackDependenciesDir + '/' + dependency + '/.git/config', 'utf8').includes(url))) {
-                        logger.log('Removing ' + fallbackDependenciesDir + '/' + dependency + ' from ' + url + ' because a different git url was supplied. It will be re-cloned.')
-                        fs.rmSync(path.resolve(fallbackDependenciesDir + '/' + dependency, ''), { recursive: true, force: true })
-                        reClone = true
-                      } else {
-                        let version = ''
-                        for (const key in parts) {
-                          const part = parts[key]
-                          if (part === '-b') {
-                            version = parts[parseInt(key) + 1]
-                            break
-                          }
+                    if (parts.includes('-b') && fs.readFileSync(fallbackDependenciesDir + '/' + dependency + '/.git/config', 'utf8').includes(parts[0])) {
+                      let version = ''
+                      for (const key in parts) {
+                        const part = parts[key]
+                        if (part === '-b') {
+                          version = parts[parseInt(key) + 1]
+                          break
                         }
-                        const output = spawnSync('git', ['tag'], { // get list of tags
+                      }
+                      const output = spawnSync('git', ['tag'], { // get list of tags
+                        shell: false,
+                        cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
+                      })
+                      if (output.status !== 0) throw output.stderr.toString()
+                      if (output.stdout.toString().split('\n').includes(version)) { // version supplied is a valid tag
+                        const tag = spawnSync('git', ['describe', '--tags'], { // get nearest tag
                           shell: false,
                           cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
                         })
-                        if (output.status !== 0) throw output.stderr.toString()
-                        if (output.stdout.toString().split('\n').includes(version)) { // version supplied is a valid tag
-                          const tag = spawnSync('git', ['describe', '--tags'], { // get nearest tag
-                            shell: false,
-                            cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
-                          })
-                          if (tag.stdout.toString().trim() === version) { // up to date with supplied tag
-                            logger.log('Already up to date: ' + fallbackDependenciesDir + '/' + dependency + ' from ' + url + ' is already up to date because the commit\'s git tag matches the desired -b version number.')
-                            if (!rerunNpmCi) break // stop checking fallbacks
-                          } else { // version supplied is a valid tag, but differs from current tag
-                            const fetch = spawnSync('git', ['fetch', '--tags'], {
-                              shell: false,
-                              cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
-                            })
-                            if (fetch.status !== 0) throw fetch.stderr.toString()
-                            const checkout = spawnSync('git', ['checkout', version], {
-                              shell: false,
-                              cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
-                            })
-                            if (checkout.status !== 0) throw checkout.stderr.toString()
-                            logger.log(`Successfully checked out tag ${version}.`)
-                            updatedDep = true
-                          }
-                        } else { // version supplied is not a tag
-                          const remote = spawnSync('git', ['remote'], {
-                            shell: false,
-                            cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
-                          })
-                          const fetch = spawnSync('git', ['fetch', remote.stdout.toString().trim()], {
+                        if (tag.stdout.toString().trim() === version) { // up to date with supplied tag
+                          logger.log('Already up to date: ' + fallbackDependenciesDir + '/' + dependency + ' from ' + url + ' is already up to date because the commit\'s git tag matches the desired -b version number.')
+                          if (!rerunNpmCi) break // stop checking fallbacks
+                        } else { // version supplied is a valid tag, but differs from current tag
+                          const fetch = spawnSync('git', ['fetch', '--tags'], {
                             shell: false,
                             cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
                           })
                           if (fetch.status !== 0) throw fetch.stderr.toString()
-                          const commitsBehind = spawnSync('git', ['rev-list', '--count', `HEAD..${remote.stdout.toString().trim()}/${version}`], {
+                          const checkout = spawnSync('git', ['checkout', version], {
                             shell: false,
                             cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
                           })
-                          if (commitsBehind.status !== 0) {
-                            const checkout = spawnSync('git', ['checkout', version], {
-                              shell: false,
-                              cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
-                            })
-                            if (checkout.status !== 0) throw checkout.stderr.toString()
-                            logger.log(`Successfully checked out commit ${version}.`)
-                            updatedDep = true
-                          } else if (commitsBehind.stdout.toString() > 0) { // git pull if behind
-                            logger.log('There are new commits available.')
-                            logger.log('Running git pull on ' + fallbackDependenciesDir + '/' + dependency + '...')
-                            const pull = spawnSync('git', ['pull', remote.stdout.toString().trim(), version], {
-                              shell: false,
-                              cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
-                            })
-                            if (pull.status !== 0) throw pull.stderr.toString()
-                            updatedDep = true
-                          } else {
-                            logger.log('Already up to date: ' + fallbackDependenciesDir + '/' + dependency + ' from ' + url + ' is already up to date because the commit\'s branch name matches the desired -b branch name.')
-                            if (!rerunNpmCi) break // stop checking fallbacks
-                          }
+                          if (checkout.status !== 0) throw checkout.stderr.toString()
+                          logger.log(`Successfully checked out tag ${version}.`)
+                          updatedDep = true
+                        }
+                      } else { // version supplied is not a tag
+                        const remote = spawnSync('git', ['remote'], {
+                          shell: false,
+                          cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
+                        })
+                        const fetch = spawnSync('git', ['fetch', remote.stdout.toString().trim()], {
+                          shell: false,
+                          cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
+                        })
+                        if (fetch.status !== 0) throw fetch.stderr.toString()
+                        const commitsBehind = spawnSync('git', ['rev-list', '--count', `HEAD..${remote.stdout.toString().trim()}/${version}`], {
+                          shell: false,
+                          cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
+                        })
+                        if (commitsBehind.status !== 0) {
+                          const checkout = spawnSync('git', ['checkout', version], {
+                            shell: false,
+                            cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
+                          })
+                          if (checkout.status !== 0) throw checkout.stderr.toString()
+                          logger.log(`Successfully checked out commit ${version}.`)
+                          updatedDep = true
+                        } else if (commitsBehind.stdout.toString() > 0) { // git pull if behind
+                          logger.log('There are new commits available.')
+                          logger.log('Running git pull on ' + fallbackDependenciesDir + '/' + dependency + '...')
+                          const pull = spawnSync('git', ['pull', remote.stdout.toString().trim(), version], {
+                            shell: false,
+                            cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
+                          })
+                          if (pull.status !== 0) throw pull.stderr.toString()
+                          updatedDep = true
+                        } else {
+                          logger.log('Already up to date: ' + fallbackDependenciesDir + '/' + dependency + ' from ' + url + ' is already up to date because the commit\'s branch name matches the desired -b branch name.')
+                          if (!rerunNpmCi) break // stop checking fallbacks
                         }
                       }
                     } else {
-                      logger.error('Cannot update ' + fallbackDependenciesDir + '/' + dependency + ' from ' + url + ' because it appears to be a different git repo or from a different remote!')
+                      logger.log('Removing ' + fallbackDependenciesDir + '/' + dependency + ' from ' + url + ' because a different git url was supplied. It will be re-cloned.')
+                      fs.rmSync(path.resolve(fallbackDependenciesDir + '/' + dependency, ''), { recursive: true, force: true })
+                      reClone = true
                     }
                   }
                   if (!reClone && !rerunNpmCi && !updatedDep) continue // try the next fallback

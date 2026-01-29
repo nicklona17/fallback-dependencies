@@ -16,6 +16,7 @@ const failedToClone = path.join(__dirname, './util/failedToClone')
 const failedToCloneVersion = path.join(__dirname, './util/failedToCloneVersion')
 const gitCheckoutTagError = path.join(__dirname, './util/gitCheckoutTagError.js')
 const gitCheckoutCommitError = path.join(__dirname, './util/gitCheckoutCommitError.js')
+const gitCheckoutTag = path.join(__dirname, './util/gitCheckoutTag.js')
 const gitCloneCheckoutError = path.join(__dirname, './util/gitCloneCheckoutError.js')
 const gitError = path.join(__dirname, './util/gitError.js')
 const gitFetchHeadError = path.join(__dirname, './util/gitFetchHeadError.js')
@@ -149,6 +150,19 @@ describe('universal fallback-dependencies tests', () => {
       assert(fs.existsSync(path.join(__dirname, './clones/repo1/lib')), './clones/repo1/lib does not exist')
       assert(fs.existsSync(path.join(__dirname, './clones/repo1/lib/fallback-deps-test-repo-2')), './clones/repo1/lib/fallback-deps-test-repo-2 does not exist')
       assert(fs.existsSync(path.join(__dirname, './clones/repo1/lib/fallback-deps-test-repo-2/.git')), './clones/repo1/lib/fallback-deps-test-repo-2/.git does not exist')
+    }
+    delete process.env.FALLBACK_DEPENDENCIES_ENABLE_CHECKOUT
+  })
+
+  it('should checkout a specific git tag even when current clone is behind remote repo', () => {
+    process.env.FALLBACK_DEPENDENCIES_ENABLE_CHECKOUT = true
+    const listTypes = ['fallbackDependencies', 'fallbackDevDependencies']
+    while (listTypes.length) {
+      fs.rmSync(path.join(__dirname, './clones'), { recursive: true, force: true })
+      fs.rmSync(path.join(__dirname, './repos'), { recursive: true, force: true })
+      require(gitCheckoutTag)(listTypes.pop())
+      assert(fs.existsSync(path.join(__dirname, './clones/repo1/lib')), './clones/repo1/lib does not exist')
+      assert(fs.existsSync(path.join(__dirname, './clones/repo1/lib/fallback-deps-test-repo-2')), './clones/repo1/lib/fallback-deps-test-repo-2 does not exist')
     }
     delete process.env.FALLBACK_DEPENDENCIES_ENABLE_CHECKOUT
   })

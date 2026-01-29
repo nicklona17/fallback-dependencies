@@ -138,6 +138,11 @@ function executeFallbackList (listTypes) {
                           break
                         }
                       }
+                      const fetch = spawnSync('git', ['fetch', '--tags'], { // make sure current clone has all tags
+                        shell: false,
+                        cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
+                      })
+                      if (fetch.status !== 0) throw fetch.stderr.toString()
                       const output = spawnSync('git', ['tag'], { // get list of tags
                         shell: false,
                         cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
@@ -153,11 +158,6 @@ function executeFallbackList (listTypes) {
                           if (!rerunNpmCi) break // stop checking fallbacks
                         } else { // version supplied is a valid tag, but differs from current tag
                           if (enableCheckout) {
-                            const fetch = spawnSync('git', ['fetch', '--tags'], {
-                              shell: false,
-                              cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')
-                            })
-                            if (fetch.status !== 0) throw fetch.stderr.toString()
                             const checkout = spawnSync('git', ['checkout', version], {
                               shell: false,
                               cwd: path.resolve(fallbackDependenciesDir + '/' + dependency, '')

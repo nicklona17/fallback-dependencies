@@ -357,7 +357,7 @@ describe('universal fallback-dependencies tests', () => {
     fs.rmSync(path.join(__dirname, './clones'), { recursive: true, force: true })
     fs.rmSync(path.join(__dirname, './repos'), { recursive: true, force: true })
     const output = require(gitTagError)('fallbackDependencies')
-    assert(output.includes('fatal: unterminated line in'), 'git tag command didn\'t throw an error')
+    assert(output.includes('fatal: simulated git tag error'), 'git tag command didn\'t throw an error')
   })
 
   it('should throw an error if the "git fetch --tags" command fails', () => {

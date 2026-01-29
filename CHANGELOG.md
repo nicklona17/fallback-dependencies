@@ -1,3 +1,7 @@
+## 1.1.4
+
+- Fixed bug where attempting to checkout a new tag present only on the remote incorrectly reported the clone was already on that version.
+
 ## 1.1.3
 
 - Added option to enable checking out rather than recloning when changing versions via `FALLBACK_DEPENDENCIES_ENABLE_CHECKOUT` environment variable or `enableCheckout` in `fallbackDependencies` package.json config.

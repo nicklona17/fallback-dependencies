@@ -3,6 +3,7 @@ module.exports = (listType) => {
   const path = require('path')
   const { spawnSync } = require('child_process')
   const testSrc = path.resolve(__dirname, '../../test')
+  const interceptGitTagSpawnSyncPath = path.resolve(__dirname, 'interceptGitTagSpawnSync.js')
   const repoList = ['repo1', 'repo2']
 
   try {
@@ -139,13 +140,14 @@ module.exports = (listType) => {
       cwd: path.normalize(`${testSrc}/clones/repo1`, '') // where we're cloning the repo to
     })
 
-    // edit git packed-refs to trigger error
-    fs.writeFileSync(path.normalize(`${testSrc}/clones/repo1/lib/fallback-deps-test-repo-2/.git/packed-refs`), 'invalid content')
-
     const output = spawnSync('npm', ['ci'], {
       shell: false,
       stdio: 'pipe', // hide output from git
-      cwd: path.normalize(`${testSrc}/clones/repo1`, '') // where we're cloning the repo to
+      cwd: path.normalize(`${testSrc}/clones/repo1`, ''), // where we're cloning the repo to
+      env: {
+        ...process.env,
+        NODE_OPTIONS: `-r ${interceptGitTagSpawnSyncPath} ${process.env.NODE_OPTIONS || ''}`
+      }
     })
 
     return output.stderr.toString()

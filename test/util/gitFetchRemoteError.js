@@ -3,6 +3,7 @@ module.exports = (listType) => {
   const path = require('path')
   const { spawnSync } = require('child_process')
   const testSrc = path.resolve(__dirname, '../../test')
+  const interceptGitFetchRemoteSpawnSyncPath = path.resolve(__dirname, 'interceptGitFetchRemoteSpawnSync.js')
   const repoList = ['repo1', 'repo2']
 
   try {
@@ -139,14 +140,6 @@ module.exports = (listType) => {
       cwd: path.normalize(`${testSrc}/clones/repo1`, '') // where we're cloning the repo to
     })
 
-    // edit git config to trigger error
-    const config = fs.readFileSync(path.normalize(`${testSrc}/clones/repo1/lib/fallback-deps-test-repo-2/.git/config`)).toString()
-    const updatedConfig = config.split('\n').map(line => {
-      if (line.includes('fetch =')) return '\tfetch = not-valid'
-      return line
-    }).join('\n')
-    fs.writeFileSync(path.normalize(`${testSrc}/clones/repo1/lib/fallback-deps-test-repo-2/.git/config`), updatedConfig)
-
     // get commit id and attempt to clone repo while specifying it
     const commit = spawnSync('git', ['log', '--oneline'], {
       shell: false,
@@ -162,7 +155,11 @@ module.exports = (listType) => {
     const output = spawnSync('npm', ['ci'], {
       shell: false,
       stdio: 'pipe', // hide output from git
-      cwd: path.normalize(`${testSrc}/clones/repo1`, '') // where we're cloning the repo to
+      cwd: path.normalize(`${testSrc}/clones/repo1`, ''), // where we're cloning the repo to
+      env: {
+        ...process.env,
+        NODE_OPTIONS: `-r ${interceptGitFetchRemoteSpawnSyncPath} ${process.env.NODE_OPTIONS || ''}`
+      }
     })
 
     return output.stderr.toString()
